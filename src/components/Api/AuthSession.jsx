@@ -1,0 +1,14 @@
+import { useEffect } from 'react'
+import { useDispatch } from 'react-redux'
+import { fetchCurrentUser } from '../../features/AuthSlice'
+
+export default function AuthSession({ children }) {
+  const dispatch = useDispatch()
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (token) {
+      dispatch(fetchCurrentUser())
+    }
+  })
+  return children
+}
