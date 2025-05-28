@@ -1,0 +1,13 @@
+.post-list {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding-top: 26px;
+  gap: 26px;
+  margin-bottom: 30px;
+}
+.pagination {
+  display: flex;
+  justify-content: center;
+}

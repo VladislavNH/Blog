@@ -3,7 +3,7 @@ import { format } from 'date-fns'
 import { useDispatch, useSelector } from 'react-redux'
 import { nanoid } from 'nanoid'
 import avatar from '../../assets/avatar.png'
-import { likePosts, unLikePost } from '../../features/PostsSlice'
+import { likePosts, unLikePost } from '../../slice/PostSlice'
 import styles from './Post.module.scss'
 
 export default function Post({ article }) {

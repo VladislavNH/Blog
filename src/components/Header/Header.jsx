@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import avatar from '../../assets/avatar.png'
-import { logout } from '../../features/AuthSlice'
+import { logout } from '../../slice/AuthSlice'
 import styles from './Header.module.scss'
 
 export default function Header() {

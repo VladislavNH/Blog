@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useDispatch } from 'react-redux'
-import { fetchCurrentUser } from '../../features/AuthSlice'
+import { fetchCurrentUser } from '../../slice/AuthSlice'
 
 export default function AuthSession({ children }) {
   const dispatch = useDispatch()

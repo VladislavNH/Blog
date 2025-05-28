@@ -2,7 +2,7 @@ import { Form, Input, Button, Checkbox, message } from 'antd'
 import { Link, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { useEffect } from 'react'
-import { register } from '../../features/AuthSlice'
+import { register } from '../../slice/AuthSlice'
 import styles from './CreateAcc.module.scss'
 
 export default function CreateAcc() {

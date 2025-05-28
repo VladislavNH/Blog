@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Pagination, Spin, Alert } from 'antd'
-import { getPosts } from '../../slice/PostsSlice'
+import { getPosts } from '../../slice/PostSlice'
 import Post from '../Post/Post'
 import styles from './PostList.module.scss'
 

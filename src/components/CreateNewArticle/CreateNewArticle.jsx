@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
-import { setFormData, resetForm, submitArticle } from '../../features/PostFormSlice'
+import { v4 as uuidv4 } from 'uuid'
+import { setFormData, resetForm, submitArticle } from '../../slice/PostFormSlice'
 import styles from './CreateNewArticle.module.scss'
 
 export default function CreateNewArticle() {
   const { slug } = useParams()
   const dispatch = useDispatch()
   const navigate = useNavigate()
+
   const { data: existingArticle } = useSelector((state) => state.article)
   const { formData } = useSelector((state) => state.postForm)
   const { isAuthenticated } = useSelector((state) => state.auth)
-  const [tags, setTags] = useState([''])
+
+  const [tags, setTags] = useState(() => [{ id: uuidv4(), value: '' }])
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -29,9 +32,16 @@ export default function CreateNewArticle() {
           tagList: existingArticle.tagList || [],
         })
       )
-      setTags(existingArticle.tagList.length > 0 ? [...existingArticle.tagList, ''] : [''])
+      setTags(
+        existingArticle.tagList.length > 0
+          ? [...existingArticle.tagList.map((t) => ({ id: uuidv4(), value: t })), { id: uuidv4(), value: '' }]
+          : [{ id: uuidv4(), value: '' }]
+      )
     }
-    return () => dispatch(resetForm())
+
+    return () => {
+      dispatch(resetForm())
+    }
   }, [dispatch, slug, existingArticle])
 
   const handleChange = (e) => {
@@ -40,31 +50,29 @@ export default function CreateNewArticle() {
   }
 
   const handleTagChange = (index, value) => {
-    const newTags = [...tags]
-    newTags[index] = value
-    setTags(newTags)
+    setTags((prev) => prev.map((tag, i) => (i === index ? { ...tag, value } : tag)))
   }
 
   const handleAddTag = () => {
-    if (tags[tags.length - 1].trim() !== '') {
-      setTags([...tags, ''])
+    const lastTag = tags[tags.length - 1]
+    if (lastTag.value.trim() !== '') {
+      setTags((prev) => [...prev, { id: uuidv4(), value: '' }])
     }
   }
 
   const handleDeleteTag = (index) => {
     if (tags.length > 1) {
-      const newTags = tags.filter((_, i) => i !== index)
-      setTags(newTags)
+      setTags((prev) => prev.filter((_, i) => i !== index))
     } else {
-      setTags([''])
+      setTags([{ id: uuidv4(), value: '' }])
     }
   }
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    const nonEmptyTags = tags.filter((tag) => tag.trim() !== '')
-    dispatch(setFormData({ tagList: nonEmptyTags }))
+    const nonEmptyTags = tags.filter((tag) => tag.value.trim() !== '').map((tag) => tag.value)
 
+    dispatch(setFormData({ tagList: nonEmptyTags }))
     dispatch(
       submitArticle({
         articleData: { ...formData, tagList: nonEmptyTags },
@@ -78,20 +86,22 @@ export default function CreateNewArticle() {
   }
 
   return (
-    <form className={styles['create-new-article']}>
-      <h1 className={styles.title}>{slug ? 'Edit Article' : 'Create new article'}</h1>
+    <form className={styles['create-new-article']} onSubmit={handleSubmit}>
+      <h1 className={styles.title}>{slug ? 'Edit Article' : 'Create New Article'}</h1>
+
       <label htmlFor="title-input" className={styles['title-create']}>
         Title
         <input
           id="title-input"
           type="text"
-          placeholder="Title"
           name="title"
+          placeholder="Title"
           className={styles['title-input']}
           value={formData.title}
           onChange={handleChange}
         />
       </label>
+
       <label htmlFor="short-description" className={styles['create-short-description']}>
         Short description
         <input
@@ -104,26 +114,28 @@ export default function CreateNewArticle() {
           onChange={handleChange}
         />
       </label>
+
       <label htmlFor="text" className={styles['text-create']}>
         Text
         <textarea
           id="text"
-          placeholder="Text"
           name="body"
+          placeholder="Text"
           className={styles.text}
           value={formData.body}
           onChange={handleChange}
         />
       </label>
+
       <label htmlFor="tags" className={styles['create-tags']}>
         Tags
         <div className={styles['tags-container']}>
-          {tags.map((tag, index) => (
-            <div key={index} className={styles['tags-main']}>
+          {tags.map(({ id, value }, index) => (
+            <div key={id} className={styles['tags-main']}>
               <input
                 type="text"
                 placeholder="Tag"
-                value={tag}
+                value={value}
                 className={styles.tag}
                 onChange={(e) => handleTagChange(index, e.target.value)}
               />
@@ -137,7 +149,7 @@ export default function CreateNewArticle() {
                   type="button"
                   className={styles['create-tag']}
                   onClick={handleAddTag}
-                  disabled={tag.trim() === ''}
+                  disabled={value.trim() === ''}
                 >
                   Add tag
                 </button>
@@ -147,7 +159,7 @@ export default function CreateNewArticle() {
         </div>
       </label>
 
-      <button type="submit" className={styles['send-button']} onClick={handleSubmit}>
+      <button type="submit" className={styles['send-button']}>
         Send
       </button>
     </form>
