@@ -12,4 +12,5 @@ const store = configureStore({
     postForm: postFormSlice,
   },
 })
+
 export default store

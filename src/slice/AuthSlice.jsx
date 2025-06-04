@@ -1,12 +1,28 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { loginUser, registerUser, getCurrentUser, updateUser } from '../components/Api/Api'
 
+export const fetchCurrentUser = createAsyncThunk('auth/fetchCurrentUser', async (_, { rejectWithValue }) => {
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      return null
+    }
+    const response = await getCurrentUser(token)
+    return response.user
+  } catch (error) {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token')
+    }
+    return rejectWithValue(null)
+  }
+})
+
 export const login = createAsyncThunk('auth/login', async (userData, { rejectWithValue }) => {
   try {
     const response = await loginUser(userData)
     return response.user
   } catch (error) {
-    return rejectWithValue(error)
+    return rejectWithValue(error.response?.data || 'Login error')
   }
 })
 
@@ -15,25 +31,7 @@ export const register = createAsyncThunk('auth/register', async (userData, { rej
     const response = await registerUser(userData)
     return response.user
   } catch (error) {
-    return rejectWithValue(error)
-  }
-})
-
-export const fetchCurrentUser = createAsyncThunk('auth/fetchCurrentUser', async (_, { rejectWithValue }) => {
-  try {
-    const token = localStorage.getItem('token')
-    if (!token) return null
-
-    const response = await getCurrentUser(token)
-    return response.user
-  } catch (error) {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-    }
-    return rejectWithValue({
-      message: error.response?.data?.message || 'Session check failed',
-      status: error.response?.status,
-    })
+    return rejectWithValue(error.response?.data || 'Register error')
   }
 })
 
@@ -43,7 +41,7 @@ export const updateProfile = createAsyncThunk('auth/updateProfile', async (userD
     const response = await updateUser(userData, auth.token)
     return response.user
   } catch (error) {
-    return rejectWithValue(error)
+    return rejectWithValue(error.response?.data || 'Update error')
   }
 })
 
@@ -52,23 +50,44 @@ const authSlice = createSlice({
   initialState: {
     user: null,
     token: localStorage.getItem('token') || null,
-    loading: false,
-    error: false,
     isAuthenticated: false,
+    isInitialized: false,
+    loading: false,
+    error: null,
   },
   reducers: {
     logout: (state) => {
       localStorage.removeItem('token')
-      state.isAuthenticated = false
-      state.user = null
       state.token = null
+      state.user = null
+      state.isAuthenticated = false
     },
   },
   extraReducers: (builder) => {
     builder
+      .addCase(fetchCurrentUser.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(fetchCurrentUser.fulfilled, (state, action) => {
+        state.loading = false
+        state.user = action.payload
+        state.token = action.payload?.token || null
+        state.isAuthenticated = !!action.payload
+        state.isInitialized = true
+      })
+      .addCase(fetchCurrentUser.rejected, (state) => {
+        state.loading = false
+        state.user = null
+        state.token = null
+        state.isAuthenticated = false
+        state.isInitialized = true
+      })
+
+    builder
       .addCase(login.pending, (state) => {
         state.loading = true
-        state.error = false
+        state.error = null
       })
       .addCase(login.fulfilled, (state, action) => {
         state.loading = false
@@ -79,15 +98,13 @@ const authSlice = createSlice({
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false
-        if (action.payload.errors) {
-          state.error = {
-            errors: action.payload.errors,
-          }
-        }
+        state.error = action.payload || 'Login failed'
       })
+
+    builder
       .addCase(register.pending, (state) => {
         state.loading = true
-        state.error = false
+        state.error = null
       })
       .addCase(register.fulfilled, (state, action) => {
         state.loading = false
@@ -98,32 +115,12 @@ const authSlice = createSlice({
       })
       .addCase(register.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload.errors
-          ? {
-              errors: {
-                username: action.payload.errors.username,
-                email: action.payload.errors.email,
-              },
-            }
-          : action.payload
+        state.error = action.payload || 'Register failed'
       })
-      .addCase(fetchCurrentUser.pending, (state) => {
-        state.loading = true
-        state.error = false
-      })
-      .addCase(fetchCurrentUser.fulfilled, (state, action) => {
-        state.loading = false
-        state.user = action.payload
-        state.isAuthenticated = !!action.payload
-      })
-      .addCase(fetchCurrentUser.rejected, (state, action) => {
-        state.loading = false
-        state.error = action.payload
-        localStorage.removeItem('token')
-      })
+    builder
       .addCase(updateProfile.pending, (state) => {
         state.loading = true
-        state.error = false
+        state.error = null
       })
       .addCase(updateProfile.fulfilled, (state, action) => {
         state.loading = false
@@ -132,17 +129,10 @@ const authSlice = createSlice({
       })
       .addCase(updateProfile.rejected, (state, action) => {
         state.loading = false
-        if (action.payload?.errors) {
-          state.error = {
-            errors: action.payload.errors,
-          }
-        } else {
-          state.error = {
-            message: action.payload.message,
-          }
-        }
+        state.error = action.payload || 'Update profile failed'
       })
   },
 })
+
 export const { logout } = authSlice.actions
 export default authSlice.reducer

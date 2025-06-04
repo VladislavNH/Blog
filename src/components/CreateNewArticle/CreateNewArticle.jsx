@@ -2,28 +2,34 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { v4 as uuidv4 } from 'uuid'
+import { Spin, Alert } from 'antd'
+
 import { setFormData, resetForm, submitArticle } from '../../slice/PostFormSlice'
+import { getArticleBySlug, clearArticle } from '../../slice/ArticleSlice'
+
 import styles from './CreateNewArticle.module.scss'
 
 export default function CreateNewArticle() {
   const { slug } = useParams()
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const { token, isInitialized, isAuthenticated } = useSelector((state) => state.auth)
 
-  const { data: existingArticle } = useSelector((state) => state.article)
+  const { data: existingArticle, loading: articleLoading, error: articleError } = useSelector((state) => state.article)
+
   const { formData } = useSelector((state) => state.postForm)
-  const { isAuthenticated } = useSelector((state) => state.auth)
 
   const [tags, setTags] = useState(() => [{ id: uuidv4(), value: '' }])
+  const [validationError, setValidationError] = useState('')
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/')
+    if (slug && token) {
+      dispatch(getArticleBySlug({ slug, token }))
     }
-  }, [isAuthenticated, navigate])
+  }, [slug, token, dispatch])
 
   useEffect(() => {
-    if (slug && existingArticle) {
+    if (existingArticle) {
       dispatch(
         setFormData({
           title: existingArticle.title || '',
@@ -32,17 +38,48 @@ export default function CreateNewArticle() {
           tagList: existingArticle.tagList || [],
         })
       )
+
       setTags(
         existingArticle.tagList.length > 0
           ? [...existingArticle.tagList.map((t) => ({ id: uuidv4(), value: t })), { id: uuidv4(), value: '' }]
           : [{ id: uuidv4(), value: '' }]
       )
     }
+  }, [existingArticle, dispatch])
 
+  useEffect(() => {
     return () => {
       dispatch(resetForm())
+      dispatch(clearArticle())
     }
-  }, [dispatch, slug, existingArticle])
+  }, [dispatch])
+
+  useEffect(() => {
+    if (isInitialized && !isAuthenticated) {
+      navigate('/')
+    }
+  }, [isInitialized, isAuthenticated, navigate])
+
+  if (slug && articleLoading) {
+    return (
+      <div className={styles.loadingWrapper}>
+        <Spin size="large" />
+      </div>
+    )
+  }
+
+  if (slug && articleError) {
+    return (
+      <div className={styles.errorWrapper}>
+        <Alert
+          message="Ошибка загрузки статьи"
+          description="Возможно, такой статьи не существует, либо сервер вернул ошибку."
+          type="error"
+          showIcon
+        />
+      </div>
+    )
+  }
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -70,12 +107,33 @@ export default function CreateNewArticle() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    const nonEmptyTags = tags.filter((tag) => tag.value.trim() !== '').map((tag) => tag.value)
+    setValidationError('')
+
+    if (!formData.title.trim()) {
+      setValidationError('Заголовок не может быть пустым или состоять только из пробелов.')
+      return
+    }
+    if (!formData.description.trim()) {
+      setValidationError('Краткое описание не может быть пустым или состоять только из пробелов.')
+      return
+    }
+    if (!formData.body.trim()) {
+      setValidationError('Текст статьи не может быть пустым или состоять только из пробелов.')
+      return
+    }
+
+    const nonEmptyTags = tags.map((t) => t.value.trim()).filter((t) => t !== '')
 
     dispatch(setFormData({ tagList: nonEmptyTags }))
+
     dispatch(
       submitArticle({
-        articleData: { ...formData, tagList: nonEmptyTags },
+        articleData: {
+          title: formData.title.trim(),
+          description: formData.description.trim(),
+          body: formData.body.trim(),
+          tagList: nonEmptyTags,
+        },
         slug,
       })
     ).then((action) => {
@@ -88,6 +146,8 @@ export default function CreateNewArticle() {
   return (
     <form className={styles['create-new-article']} onSubmit={handleSubmit}>
       <h1 className={styles.title}>{slug ? 'Edit Article' : 'Create New Article'}</h1>
+
+      {validationError && <p className={styles['validation-error']}>{validationError}</p>}
 
       <label htmlFor="title-input" className={styles['title-create']}>
         Title

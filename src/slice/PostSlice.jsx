@@ -44,7 +44,11 @@ const postsSlice = createSlice({
     limit: 5,
     favorites: {},
   },
-  reducers: {},
+  reducers: {
+    setOffset(state, action) {
+      state.offset = action.payload
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(getPosts.pending, (state) => {
@@ -76,4 +80,7 @@ const postsSlice = createSlice({
       })
   },
 })
+
+export const { setOffset } = postsSlice.actions
+
 export default postsSlice.reducer
